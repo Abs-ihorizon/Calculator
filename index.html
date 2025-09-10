@@ -2,10 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Crypto Calculator & Chart</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
+  <title>Crypto Calculator</title>
   <style>
     body {
       background: #111;
@@ -16,15 +13,15 @@
       padding: 20px;
     }
     .container {
-      max-width: 1200px;
+      max-width: 600px;
       margin: auto;
-    }
-    .calculator, .chart {
       background: #1c1c1c;
       border-radius: 12px;
-      padding: 20px;
-      margin: 20px 0;
+      padding: 30px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    }
+    h1 {
+      color: #2ea043;
     }
     select, input {
       padding: 10px;
@@ -43,34 +40,16 @@
     button:hover {
       background: #238636;
     }
-    canvas {
-      width: 100% !important;
-      height: 500px !important;
-      background: #222;
-      border-radius: 10px;
-      margin-top: 20px;
-    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1 style="color:#2ea043">Crypto Calculator & Trading Chart</h1>
-
-    <!-- Calculator Section -->
-    <div class="calculator">
-      <h2>Crypto Calculator</h2>
-      <select id="coinSelect"></select>
-      <select id="currencySelect"></select>
-      <input type="number" id="amount" placeholder="Enter amount" value="1">
-      <button onclick="calculate()">Convert</button>
-      <h3 id="result">Result: -</h3>
-    </div>
-
-    <!-- Chart Section -->
-    <div class="chart">
-      <h2>Trading Candlestick Chart</h2>
-      <canvas id="candlestickChart"></canvas>
-    </div>
+    <h1>Crypto Calculator</h1>
+    <select id="coinSelect"></select>
+    <select id="currencySelect"></select>
+    <input type="number" id="amount" placeholder="Enter amount" value="1">
+    <button onclick="calculate()">Convert</button>
+    <h3 id="result">Result: -</h3>
   </div>
 
   <script>
@@ -84,6 +63,7 @@
       const coinSelect = document.getElementById("coinSelect");
       const currencySelect = document.getElementById("currencySelect");
 
+      // Limit coins to first 50 for performance
       coins.slice(0, 50).forEach(c => {
         const opt = document.createElement("option");
         opt.value = c.id;
@@ -98,9 +78,9 @@
         currencySelect.appendChild(opt);
       });
 
+      // Defaults
       coinSelect.value = "bitcoin";
       currencySelect.value = "usd";
-      renderChart("bitcoin", "usd");
     }
 
     // Calculator Function
@@ -112,83 +92,9 @@
       const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coin}&vs_currencies=${currency}`);
       const data = await res.json();
       const price = data[coin][currency];
-      document.getElementById("result").textContent = `Result: ${amount} ${coin} = ${(price * amount).toFixed(2)} ${currency.toUpperCase()}`;
 
-      renderChart(coin, currency);
-    }
-
-    // Fetch daily OHLC data
-    async function fetchData(coin, currency, days = 7) {
-      const url = `https://api.coingecko.com/api/v3/coins/${coin}/ohlc?vs_currency=${currency}&days=${days}`;
-      const res = await fetch(url);
-      const ohlc = await res.json();
-
-      // Group into daily candles
-      const grouped = {};
-      ohlc.forEach(d => {
-        const day = new Date(d[0]).toISOString().split("T")[0];
-        if (!grouped[day]) {
-          grouped[day] = { o: d[1], h: d[2], l: d[3], c: d[4] };
-        } else {
-          grouped[day].h = Math.max(grouped[day].h, d[2]);
-          grouped[day].l = Math.min(grouped[day].l, d[3]);
-          grouped[day].c = d[4];
-        }
-      });
-
-      const candlestickData = [];
-      for (let day in grouped) {
-        candlestickData.push({
-          x: new Date(day),
-          o: grouped[day].o,
-          h: grouped[day].h,
-          l: grouped[day].l,
-          c: grouped[day].c
-        });
-      }
-
-      return candlestickData;
-    }
-
-    let chart;
-
-    // Render candlestick chart
-    async function renderChart(coin, currency) {
-      const ctx = document.getElementById("candlestickChart").getContext("2d");
-      const data = await fetchData(coin, currency, 7);
-
-      if (chart) chart.destroy();
-
-      chart = new Chart(ctx, {
-        type: 'candlestick',
-        data: {
-          datasets: [{
-            label: `${coin.toUpperCase()} Price (Daily)`,
-            data: data,
-            color: {
-              up: '#2ea043',   // green bullish
-              down: '#f85149', // red bearish
-              unchanged: '#aaa'
-            }
-          }]
-        },
-        options: {
-          plugins: {
-            legend: { labels: { color: "#fff" } }
-          },
-          scales: {
-            x: {
-              type: 'time',
-              time: { unit: 'day' },
-              ticks: { color: "#fff" }
-            },
-            y: {
-              beginAtZero: false,
-              ticks: { color: "#fff" }
-            }
-          }
-        }
-      });
+      document.getElementById("result").textContent = 
+        `Result: ${amount} ${coin} = ${(price * amount).toFixed(2)} ${currency.toUpperCase()}`;
     }
 
     loadOptions();
