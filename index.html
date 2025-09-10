@@ -2,138 +2,196 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Crypto Calculator & Trading Chart</title>
-
-  <!-- Chart.js and Financial Plugin -->
+  <title>Crypto Calculator & Chart</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
-
-  <!-- Luxon + Adapter for Date/Time Support -->
-  <script src="https://cdn.jsdelivr.net/npm/luxon@3"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1"></script>
-
   <style>
-    body { font-family: Arial, sans-serif; background: #0d1117; color: #eee; margin: 0; padding: 0; }
-    header { background: #161b22; padding: 15px; text-align: center; font-size: 20px; }
-    .container { display: flex; }
-    .sidebar { width: 250px; background: #161b22; padding: 15px; border-right: 1px solid #333; }
-    .content { flex: 1; padding: 20px; }
-    select, input { padding: 6px; margin: 5px; border-radius: 5px; border: 1px solid #444; background: #222; color: #eee; }
-    button { padding: 6px 10px; border: none; border-radius: 5px; background: #2ea043; color: #fff; cursor: pointer; }
-    h3 { border-bottom: 1px solid #333; padding-bottom: 5px; }
-    canvas { background: #111; border-radius: 10px; padding: 10px; }
-    .coin { display: flex; align-items: center; margin: 5px 0; }
-    .coin img { width: 20px; height: 20px; margin-right: 8px; }
+    body {
+      background: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: auto;
+    }
+    .calculator, .chart {
+      background: #1c1c1c;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px 0;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    }
+    select, input {
+      padding: 10px;
+      border-radius: 6px;
+      border: none;
+      margin: 10px;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      background: #2ea043;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #238636;
+    }
+    canvas {
+      width: 100% !important;
+      height: 500px !important;
+      background: #222;
+      border-radius: 10px;
+      margin-top: 20px;
+    }
   </style>
 </head>
 <body>
-  <header>
-    <img src="assets/logo.png" alt="Logo" width="50" style="vertical-align: middle; margin-right:10px;">
-    Crypto Calculator & Trading Chart
-  </header>
   <div class="container">
-    <div class="sidebar">
-      <h3>Trending Coins</h3>
-      <div id="trending"></div>
-    </div>
-    <div class="content">
-      <h3>Calculator</h3>
-      <label>Coin:</label>
-      <select id="coinSelect"></select>
-      <label>Currency:</label>
-      <select id="currencySelect"></select><br>
-      <label>Buy Price:</label>
-      <input type="number" id="buyPrice" placeholder="e.g. 50000">
-      <label>Quantity:</label>
-      <input type="number" id="quantity" placeholder="e.g. 0.1">
-      <button onclick="calculatePnL()">Calculate</button>
-      <div id="result"></div>
+    <h1 style="color:#2ea043">Crypto Calculator & Trading Chart</h1>
 
-      <h3>Trading Chart (7D)</h3>
-      <canvas id="candlestickChart" height="400"></canvas>
-      <canvas id="volumeChart" height="100"></canvas>
+    <!-- Calculator Section -->
+    <div class="calculator">
+      <h2>Crypto Calculator</h2>
+      <select id="coinSelect"></select>
+      <select id="currencySelect"></select>
+      <input type="number" id="amount" placeholder="Enter amount" value="1">
+      <button onclick="calculate()">Convert</button>
+      <h3 id="result">Result: -</h3>
+    </div>
+
+    <!-- Chart Section -->
+    <div class="chart">
+      <h2>Trading Candlestick Chart</h2>
+      <canvas id="candlestickChart"></canvas>
     </div>
   </div>
 
   <script>
-    const coinSelect = document.getElementById("coinSelect");
-    const currencySelect = document.getElementById("currencySelect");
-    const resultDiv = document.getElementById("result");
-    let candlestickChart, volumeChart;
+    // Load coins and currencies from API
+    async function loadOptions() {
+      const coinRes = await fetch("https://api.coingecko.com/api/v3/coins/list");
+      const coins = await coinRes.json();
+      const currencyRes = await fetch("https://api.coingecko.com/api/v3/simple/supported_vs_currencies");
+      const currencies = await currencyRes.json();
 
-    async function loadCoins() {
-      const res = await fetch("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false");
-      const data = await res.json();
-      coinSelect.innerHTML = data.map(c => `<option value="${c.id}">${c.name} (${c.symbol.toUpperCase()})</option>`).join("");
-    }
+      const coinSelect = document.getElementById("coinSelect");
+      const currencySelect = document.getElementById("currencySelect");
 
-    async function loadCurrencies() {
-      const res = await fetch("https://api.coingecko.com/api/v3/simple/supported_vs_currencies");
-      const data = await res.json();
-      currencySelect.innerHTML = data.map(c => `<option value="${c}">${c.toUpperCase()}</option>`).join("");
+      coins.slice(0, 50).forEach(c => {
+        const opt = document.createElement("option");
+        opt.value = c.id;
+        opt.textContent = c.name;
+        coinSelect.appendChild(opt);
+      });
+
+      currencies.forEach(cur => {
+        const opt = document.createElement("option");
+        opt.value = cur;
+        opt.textContent = cur.toUpperCase();
+        currencySelect.appendChild(opt);
+      });
+
+      coinSelect.value = "bitcoin";
       currencySelect.value = "usd";
+      renderChart("bitcoin", "usd");
     }
 
-    async function loadTrending() {
-      const res = await fetch("https://api.coingecko.com/api/v3/search/trending");
-      const data = await res.json();
-      document.getElementById("trending").innerHTML = data.coins.map(c => `
-        <div class="coin"><img src="${c.item.thumb}"> ${c.item.name} (${c.item.symbol.toUpperCase()})</div>
-      `).join("");
-    }
-
-    async function calculatePnL() {
-      const coin = coinSelect.value;
-      const currency = currencySelect.value;
-      const buyPrice = parseFloat(document.getElementById("buyPrice").value);
-      const qty = parseFloat(document.getElementById("quantity").value);
-      if (!coin || !currency || !buyPrice || !qty) return;
+    // Calculator Function
+    async function calculate() {
+      const coin = document.getElementById("coinSelect").value;
+      const currency = document.getElementById("currencySelect").value;
+      const amount = document.getElementById("amount").value;
 
       const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coin}&vs_currencies=${currency}`);
       const data = await res.json();
-      const current = data[coin][currency];
-      const totalBuy = buyPrice * qty;
-      const totalCurrent = current * qty;
-      const pnl = totalCurrent - totalBuy;
-      resultDiv.innerHTML = `
-        Current Price: ${current} ${currency.toUpperCase()}<br>
-        Total Value: ${totalCurrent.toFixed(2)} ${currency.toUpperCase()}<br>
-        P&L: <b style="color:${pnl>=0?'lime':'red'}">${pnl.toFixed(2)} ${currency.toUpperCase()}</b>
-      `;
-      loadChart(coin, currency);
+      const price = data[coin][currency];
+      document.getElementById("result").textContent = `Result: ${amount} ${coin} = ${(price * amount).toFixed(2)} ${currency.toUpperCase()}`;
+
+      renderChart(coin, currency);
     }
 
-    async function loadChart(coin, currency) {
-      const ohlcRes = await fetch(`https://api.coingecko.com/api/v3/coins/${coin}/ohlc?vs_currency=${currency}&days=7`);
-      const ohlc = await ohlcRes.json();
-      const volRes = await fetch(`https://api.coingecko.com/api/v3/coins/${coin}/market_chart?vs_currency=${currency}&days=7`);
-      const vol = await volRes.json();
+    // Fetch daily OHLC data
+    async function fetchData(coin, currency, days = 7) {
+      const url = `https://api.coingecko.com/api/v3/coins/${coin}/ohlc?vs_currency=${currency}&days=${days}`;
+      const res = await fetch(url);
+      const ohlc = await res.json();
 
-      const candlestickData = ohlc.map(d => ({x: new Date(d[0]), o: d[1], h: d[2], l: d[3], c: d[4]}));
-      const volumeData = vol.total_volumes.map(d => ({x: new Date(d[0]), y: d[1]}));
+      // Group into daily candles
+      const grouped = {};
+      ohlc.forEach(d => {
+        const day = new Date(d[0]).toISOString().split("T")[0];
+        if (!grouped[day]) {
+          grouped[day] = { o: d[1], h: d[2], l: d[3], c: d[4] };
+        } else {
+          grouped[day].h = Math.max(grouped[day].h, d[2]);
+          grouped[day].l = Math.min(grouped[day].l, d[3]);
+          grouped[day].c = d[4];
+        }
+      });
 
-      if (candlestickChart) candlestickChart.destroy();
-      if (volumeChart) volumeChart.destroy();
+      const candlestickData = [];
+      for (let day in grouped) {
+        candlestickData.push({
+          x: new Date(day),
+          o: grouped[day].o,
+          h: grouped[day].h,
+          l: grouped[day].l,
+          c: grouped[day].c
+        });
+      }
 
-      const ctx1 = document.getElementById("candlestickChart").getContext("2d");
-      candlestickChart = new Chart(ctx1, {
+      return candlestickData;
+    }
+
+    let chart;
+
+    // Render candlestick chart
+    async function renderChart(coin, currency) {
+      const ctx = document.getElementById("candlestickChart").getContext("2d");
+      const data = await fetchData(coin, currency, 7);
+
+      if (chart) chart.destroy();
+
+      chart = new Chart(ctx, {
         type: 'candlestick',
-        data: {datasets: [{label: `${coin} Price`, data: candlestickData}]},
-        options: {scales: {x: {type: 'time', time: {unit: 'day'}}, y: {beginAtZero: false}}}
-      });
-
-      const ctx2 = document.getElementById("volumeChart").getContext("2d");
-      volumeChart = new Chart(ctx2, {
-        type: 'bar',
-        data: {datasets: [{label: 'Volume', data: volumeData, backgroundColor: '#2ea043'}]},
-        options: {scales: {x: {type: 'time', time: {unit: 'day'}}, y: {beginAtZero: true}}}
+        data: {
+          datasets: [{
+            label: `${coin.toUpperCase()} Price (Daily)`,
+            data: data,
+            color: {
+              up: '#2ea043',   // green bullish
+              down: '#f85149', // red bearish
+              unchanged: '#aaa'
+            }
+          }]
+        },
+        options: {
+          plugins: {
+            legend: { labels: { color: "#fff" } }
+          },
+          scales: {
+            x: {
+              type: 'time',
+              time: { unit: 'day' },
+              ticks: { color: "#fff" }
+            },
+            y: {
+              beginAtZero: false,
+              ticks: { color: "#fff" }
+            }
+          }
+        }
       });
     }
 
-    setInterval(loadTrending, 60000);
-    loadCoins();
-    loadCurrencies();
-    loadTrending();
+    loadOptions();
   </script>
 </body>
 </html>
