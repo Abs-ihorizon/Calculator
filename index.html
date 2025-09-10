@@ -173,7 +173,7 @@
   </div>
 
 <script>
-  const FINNHUB_API_KEY = "d30ti29r01qnu2qvkc80d30ti29r01qvkc8g";
+  const FINNHUB_API_KEY = "d30ti29r01qnu2qvkc80d30ti29r01qnu2qvkc8g";
 
   const coinSelect = document.getElementById("coinSelect");
   const currencySelect = document.getElementById("currencySelect");
@@ -185,8 +185,6 @@
   const trendingCoinsDiv = document.getElementById("trendingCoins");
   const trendingStocksDiv = document.getElementById("trendingStocks");
   const tickerBar = document.getElementById("tickerBar");
-
-  let coinsData = [];
 
   function switchType() {
     const type = document.getElementById("calcType").value;
@@ -262,11 +260,15 @@
     const res = await fetch(`https://finnhub.io/api/v1/stock/symbol?exchange=US&token=${FINNHUB_API_KEY}`);
     const data = await res.json();
     trendingStocksDiv.innerHTML = "";
-    for (let i=0;i<5 && i<data.length;i++) {
-      const s = data[i];
+    const top5 = data.slice(0,5);
+    for (let s of top5) {
+      const quoteRes = await fetch(`https://finnhub.io/api/v1/quote?symbol=${s.symbol}&token=${FINNHUB_API_KEY}`);
+      const quote = await quoteRes.json();
+      const price = quote.c || "--";
+
       const div = document.createElement("div");
       div.className = "coin";
-      div.textContent = `${s.description || s.symbol} (${s.symbol})`;
+      div.textContent = `${s.description || s.symbol} (${s.symbol}): $${price}`;
       div.onclick = () => selectStock(s.symbol);
       trendingStocksDiv.appendChild(div);
     }
@@ -287,54 +289,7 @@
   async function loadTickerBar() {
     const resCrypto = await fetch("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=5&page=1&sparkline=false");
     const crypto = await resCrypto.json();
+
     const resStock = await fetch(`https://finnhub.io/api/v1/stock/symbol?exchange=US&token=${FINNHUB_API_KEY}`);
-    const stock = await resStock.json();
-    let tickerHtml = "";
-    crypto.forEach(c => tickerHtml += `${c.symbol.toUpperCase()}: $${c.current_price} &nbsp;&nbsp;&nbsp;`);
-    for (let i=0;i<5 && i<stock.length;i++) {
-      tickerHtml += `${stock[i].symbol}: $-- &nbsp;&nbsp;&nbsp;`; // price fetch optional
-    }
-    tickerBar.innerHTML = `<span>${tickerHtml}</span>`;
-  }
-
-  // ======= CALCULATION =======
-  async function calculatePnL() {
-    const type = document.getElementById("calcType").value;
-    const buyPrice = parseFloat(document.getElementById("buyPrice").value);
-    const qty = parseFloat(document.getElementById("quantity").value);
-    if (!buyPrice || !qty) return;
-
-    let current, currency;
-
-    if(type==="crypto"){
-      const coin = coinSelect.value;
-      currency = currencySelect.value;
-      if(!coin){ alert("Select coin"); return; }
-      const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coin}&vs_currencies=${currency}`);
-      const data = await res.json();
-      current = data[coin][currency];
-    } else {
-      const symbol = stockSelect.value;
-      if(!symbol){ alert("Select stock"); return; }
-      const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API_KEY}`);
-      const data = await res.json();
-      if(!data.c){ alert("Invalid stock symbol"); return; }
-      current = data.c;
-      currency = "USD";
-    }
-
-    const totalBuy = buyPrice * qty;
-    const totalCurrent = current * qty;
-    const pnl = totalCurrent - totalBuy;
-    resultDiv.innerHTML = `Current Price: ${current} ${currency}<br>Total Value: ${totalCurrent.toFixed(2)} ${currency}<br>P&L: <b style="color:${pnl>=0?'lime':'red'}">${pnl.toFixed(2)} ${currency}</b>`;
-  }
-
-  // ======= INIT =======
-  loadCurrencies();
-  loadTrendingCoins();
-  loadTrendingStocks();
-  loadTickerBar();
-  setInterval(loadTickerBar, 15000);
-</script>
-</body>
-</html>
+    const stockList = await resStock.json();
+    const top5Stock = stockList.slice(
