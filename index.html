@@ -3,8 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <title>Crypto Calculator & Trading Chart</title>
+
+  <!-- Chart.js and Financial Plugin -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
+
+  <!-- Luxon + Adapter for Date/Time Support -->
+  <script src="https://cdn.jsdelivr.net/npm/luxon@3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1"></script>
+
   <style>
     body { font-family: Arial, sans-serif; background: #0d1117; color: #eee; margin: 0; padding: 0; }
     header { background: #161b22; padding: 15px; text-align: center; font-size: 20px; }
@@ -112,14 +119,14 @@
       candlestickChart = new Chart(ctx1, {
         type: 'candlestick',
         data: {datasets: [{label: `${coin} Price`, data: candlestickData}]},
-        options: {scales: {x: {time: {unit: 'day'}}, y: {beginAtZero: false}}}
+        options: {scales: {x: {type: 'time', time: {unit: 'day'}}, y: {beginAtZero: false}}}
       });
 
       const ctx2 = document.getElementById("volumeChart").getContext("2d");
       volumeChart = new Chart(ctx2, {
         type: 'bar',
         data: {datasets: [{label: 'Volume', data: volumeData, backgroundColor: '#2ea043'}]},
-        options: {scales: {x: {time: {unit: 'day'}}, y: {beginAtZero: true}}}
+        options: {scales: {x: {type: 'time', time: {unit: 'day'}}, y: {beginAtZero: true}}}
       });
     }
 
