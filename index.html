@@ -2,9 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Crypto Calculator & Trading Chart</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
+  <title>Crypto Calculator</title>
   <style>
     body { font-family: Arial, sans-serif; background: #0d1117; color: #eee; margin: 0; padding: 0; }
     header { background: #161b22; padding: 15px; text-align: center; font-size: 20px; }
@@ -14,15 +12,15 @@
     select, input { padding: 6px; margin: 5px; border-radius: 5px; border: 1px solid #444; background: #222; color: #eee; }
     button { padding: 6px 10px; border: none; border-radius: 5px; background: #2ea043; color: #fff; cursor: pointer; }
     h3 { border-bottom: 1px solid #333; padding-bottom: 5px; }
-    canvas { background: #111; border-radius: 10px; padding: 10px; }
     .coin { display: flex; align-items: center; margin: 5px 0; }
     .coin img { width: 20px; height: 20px; margin-right: 8px; }
+    #coinSearch { width: 90%; margin: 5px 0; }
   </style>
 </head>
 <body>
   <header>
     <img src="assets/logo.png" alt="Logo" width="50" style="vertical-align: middle; margin-right:10px;">
-    Crypto Calculator & Trading Chart
+    Crypto Calculator
   </header>
   <div class="container">
     <div class="sidebar">
@@ -31,8 +29,10 @@
     </div>
     <div class="content">
       <h3>Calculator</h3>
-      <label>Coin:</label>
-      <select id="coinSelect"></select>
+      <label>Search Coin:</label><br>
+      <input type="text" id="coinSearch" placeholder="Search coin...">
+      <br>
+      <select id="coinSelect"></select><br>
       <label>Currency:</label>
       <select id="currencySelect"></select><br>
       <label>Buy Price:</label>
@@ -41,10 +41,6 @@
       <input type="number" id="quantity" placeholder="e.g. 0.1">
       <button onclick="calculatePnL()">Calculate</button>
       <div id="result"></div>
-
-      <h3>Trading Chart (7D)</h3>
-      <canvas id="candlestickChart" height="400"></canvas>
-      <canvas id="volumeChart" height="100"></canvas>
     </div>
   </div>
 
@@ -52,13 +48,26 @@
     const coinSelect = document.getElementById("coinSelect");
     const currencySelect = document.getElementById("currencySelect");
     const resultDiv = document.getElementById("result");
-    let candlestickChart, volumeChart;
+    const coinSearch = document.getElementById("coinSearch");
+    let coinsData = [];
 
     async function loadCoins() {
-      const res = await fetch("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false");
-      const data = await res.json();
+      const res = await fetch("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false");
+      coinsData = await res.json();
+      renderCoinOptions(coinsData);
+    }
+
+    function renderCoinOptions(data) {
       coinSelect.innerHTML = data.map(c => `<option value="${c.id}">${c.name} (${c.symbol.toUpperCase()})</option>`).join("");
     }
+
+    coinSearch.addEventListener("input", () => {
+      const searchText = coinSearch.value.toLowerCase();
+      const filtered = coinsData.filter(c => 
+        c.name.toLowerCase().includes(searchText) || c.symbol.toLowerCase().includes(searchText)
+      );
+      renderCoinOptions(filtered);
+    });
 
     async function loadCurrencies() {
       const res = await fetch("https://api.coingecko.com/api/v3/simple/supported_vs_currencies");
@@ -93,34 +102,6 @@
         Total Value: ${totalCurrent.toFixed(2)} ${currency.toUpperCase()}<br>
         P&L: <b style="color:${pnl>=0?'lime':'red'}">${pnl.toFixed(2)} ${currency.toUpperCase()}</b>
       `;
-      loadChart(coin, currency);
-    }
-
-    async function loadChart(coin, currency) {
-      const ohlcRes = await fetch(`https://api.coingecko.com/api/v3/coins/${coin}/ohlc?vs_currency=${currency}&days=7`);
-      const ohlc = await ohlcRes.json();
-      const volRes = await fetch(`https://api.coingecko.com/api/v3/coins/${coin}/market_chart?vs_currency=${currency}&days=7`);
-      const vol = await volRes.json();
-
-      const candlestickData = ohlc.map(d => ({x: new Date(d[0]), o: d[1], h: d[2], l: d[3], c: d[4]}));
-      const volumeData = vol.total_volumes.map(d => ({x: new Date(d[0]), y: d[1]}));
-
-      if (candlestickChart) candlestickChart.destroy();
-      if (volumeChart) volumeChart.destroy();
-
-      const ctx1 = document.getElementById("candlestickChart").getContext("2d");
-      candlestickChart = new Chart(ctx1, {
-        type: 'candlestick',
-        data: {datasets: [{label: `${coin} Price`, data: candlestickData}]},
-        options: {scales: {x: {time: {unit: 'day'}}, y: {beginAtZero: false}}}
-      });
-
-      const ctx2 = document.getElementById("volumeChart").getContext("2d");
-      volumeChart = new Chart(ctx2, {
-        type: 'bar',
-        data: {datasets: [{label: 'Volume', data: volumeData, backgroundColor: '#2ea043'}]},
-        options: {scales: {x: {time: {unit: 'day'}}, y: {beginAtZero: true}}}
-      });
     }
 
     setInterval(loadTrending, 60000);
