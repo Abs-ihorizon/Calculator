@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Crypto Calculator</title>
+  <title>Crypto & Stock Calculator</title>
   <style>
     body { font-family: Arial, sans-serif; background: #0d1117; color: #eee; margin: 0; padding: 0; }
     header { background: #161b22; padding: 15px; text-align: center; font-size: 20px; }
@@ -14,13 +14,13 @@
     h3 { border-bottom: 1px solid #333; padding-bottom: 5px; }
     .coin { display: flex; align-items: center; margin: 5px 0; }
     .coin img { width: 20px; height: 20px; margin-right: 8px; }
-    #coinSearch { width: 90%; margin: 5px 0; }
+    #coinSearch, #stockSearch { width: 90%; margin: 5px 0; }
   </style>
 </head>
 <body>
   <header>
     <img src="assets/logo.png" alt="Logo" width="50" style="vertical-align: middle; margin-right:10px;">
-    Crypto Calculator
+    Crypto & Stock Calculator
   </header>
   <div class="container">
     <div class="sidebar">
@@ -29,12 +29,24 @@
     </div>
     <div class="content">
       <h3>Calculator</h3>
-      <label>Search Coin:</label><br>
-      <input type="text" id="coinSearch" placeholder="Search coin...">
-      <br>
-      <select id="coinSelect"></select><br>
-      <label>Currency:</label>
-      <select id="currencySelect"></select><br>
+      <label>Type:</label>
+      <select id="calcType" onchange="switchType()">
+        <option value="crypto">Crypto</option>
+        <option value="stock">Stock</option>
+      </select>
+      <div id="cryptoSection">
+        <label>Search Coin:</label><br>
+        <input type="text" id="coinSearch" placeholder="Search coin...">
+        <br>
+        <select id="coinSelect"></select><br>
+        <label>Currency:</label>
+        <select id="currencySelect"></select><br>
+      </div>
+      <div id="stockSection" style="display:none;">
+        <label>Stock Symbol:</label><br>
+        <input type="text" id="stockSearch" placeholder="e.g. AAPL, TSLA, MSFT">
+        <br>
+      </div>
       <label>Buy Price:</label>
       <input type="number" id="buyPrice" placeholder="e.g. 50000">
       <label>Quantity:</label>
@@ -49,7 +61,14 @@
     const currencySelect = document.getElementById("currencySelect");
     const resultDiv = document.getElementById("result");
     const coinSearch = document.getElementById("coinSearch");
+    const stockSearch = document.getElementById("stockSearch");
     let coinsData = [];
+
+    function switchType() {
+      const type = document.getElementById("calcType").value;
+      document.getElementById("cryptoSection").style.display = type === "crypto" ? "block" : "none";
+      document.getElementById("stockSection").style.display = type === "stock" ? "block" : "none";
+    }
 
     async function loadCoins() {
       const res = await fetch("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false");
@@ -85,15 +104,32 @@
     }
 
     async function calculatePnL() {
-      const coin = coinSelect.value;
-      const currency = currencySelect.value;
+      const type = document.getElementById("calcType").value;
       const buyPrice = parseFloat(document.getElementById("buyPrice").value);
       const qty = parseFloat(document.getElementById("quantity").value);
-      if (!coin || !currency || !buyPrice || !qty) return;
+      if (!buyPrice || !qty) return;
 
-      const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coin}&vs_currencies=${currency}`);
-      const data = await res.json();
-      const current = data[coin][currency];
+      let current, currency;
+
+      if (type === "crypto") {
+        const coin = coinSelect.value;
+        currency = currencySelect.value;
+        const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coin}&vs_currencies=${currency}`);
+        const data = await res.json();
+        current = data[coin][currency];
+      } else if (type === "stock") {
+        const symbol = stockSearch.value.toUpperCase();
+        if (!symbol) { alert("Enter stock symbol"); return; }
+        // Yahoo Finance API
+        const res = await fetch(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbol}`);
+        const data = await res.json();
+        if (!data.quoteResponse.result.length) {
+          alert("Invalid stock symbol"); return;
+        }
+        current = data.quoteResponse.result[0].regularMarketPrice;
+        currency = data.quoteResponse.result[0].currency || "USD";
+      }
+
       const totalBuy = buyPrice * qty;
       const totalCurrent = current * qty;
       const pnl = totalCurrent - totalBuy;
