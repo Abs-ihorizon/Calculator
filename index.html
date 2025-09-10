@@ -29,19 +29,38 @@
       margin-right: 10px;
     }
 
+    #ticker {
+      background: rgba(0,0,0,0.4);
+      overflow: hidden;
+      white-space: nowrap;
+      padding: 10px 0;
+      font-size: 16px;
+      color: #00e0ff;
+    }
+
+    #ticker span {
+      display: inline-block;
+      padding: 0 30px;
+      animation: scroll 30s linear infinite;
+    }
+
+    @keyframes scroll {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+
     .container {
       display: flex;
       flex: 1;
     }
 
     .sidebar {
-      width: 280px;
+      width: 260px;
       background: rgba(255, 255, 255, 0.05);
       backdrop-filter: blur(12px);
       padding: 20px;
       border-right: 1px solid rgba(255,255,255,0.1);
       box-shadow: inset -1px 0 10px rgba(0,0,0,0.2);
-      overflow-y: auto;
     }
 
     .content {
@@ -93,7 +112,7 @@
       box-shadow: 0 0 15px #00e0ff;
     }
 
-    .item {
+    .coin, .stock {
       display: flex;
       align-items: center;
       margin: 8px 0;
@@ -102,11 +121,11 @@
       transition: 0.2s;
       cursor: pointer;
     }
-    .item:hover {
+    .coin:hover, .stock:hover {
       background: rgba(255,255,255,0.1);
       transform: translateX(5px);
     }
-    .item img {
+    .coin img {
       width: 22px;
       height: 22px;
       margin-right: 10px;
@@ -125,30 +144,6 @@
     #coinSearch, #stockSearch {
       width: 250px;
     }
-
-    .ticker-bar {
-      width: 100%;
-      background: rgba(0,0,0,0.2);
-      color: #00e0ff;
-      padding: 8px 20px;
-      overflow: hidden;
-      white-space: nowrap;
-      box-sizing: border-box;
-      border-bottom: 1px solid rgba(255,255,255,0.2);
-      font-weight: bold;
-    }
-    .ticker-item {
-      display: inline-block;
-      margin-right: 40px;
-      animation: ticker 20s linear infinite;
-    }
-    @keyframes ticker {
-      0% { transform: translateX(100%); }
-      100% { transform: translateX(-100%); }
-    }
-
-    .sidebar-section { margin-bottom: 30px; }
-    .sidebar-section h4 { margin-bottom: 10px; color: #ffcc00; }
   </style>
 </head>
 <body>
@@ -157,21 +152,15 @@
     Crypto & Stock Calculator
   </header>
 
-  <!-- 🔹 Ticker Bar -->
-  <div class="ticker-bar" id="tickerBar">Loading prices...</div>
+  <div id="ticker"></div>
 
   <div class="container">
     <div class="sidebar">
-      <div class="sidebar-section">
-        <h4>🔥 Top 5 Coins</h4>
-        <div id="trendingCoins"></div>
-      </div>
-      <div class="sidebar-section">
-        <h4>📈 Top 5 Stocks</h4>
-        <div id="trendingStocks"></div>
-      </div>
+      <h3>🔥 Top 5 Crypto</h3>
+      <div id="trendingCrypto"></div>
+      <h3>📈 Top 5 Stocks</h3>
+      <div id="trendingStock"></div>
     </div>
-
     <div class="content">
       <h3>📊 Calculator</h3>
       <label>Type:</label>
@@ -180,7 +169,6 @@
         <option value="stock">Stock</option>
       </select>
 
-      <!-- Crypto Section -->
       <div id="cryptoSection">
         <label>Search Coin:</label><br>
         <input type="text" id="coinSearch" placeholder="Type at least 2 letters..."><br>
@@ -189,7 +177,6 @@
         <select id="currencySelect"></select><br>
       </div>
 
-      <!-- Stock Section -->
       <div id="stockSection" style="display:none;">
         <label>Search Stock:</label><br>
         <input type="text" id="stockSearch" placeholder="Type at least 2 letters..."><br>
@@ -205,98 +192,130 @@
     </div>
   </div>
 
-  <script>
-    const FINNHUB_API_KEY = "d30ti29r01qnu2qvkc80d30ti29r01qnu2qvkc8g";
+<script>
+const FINNHUB_API_KEY = "d30ti29r01qnu2qvkc80d30ti29r01qnu2qvkc8g";
 
-    const coinSelect = document.getElementById("coinSelect");
-    const currencySelect = document.getElementById("currencySelect");
-    const stockSelect = document.getElementById("stockSelect");
-    const resultDiv = document.getElementById("result");
-    const coinSearch = document.getElementById("coinSearch");
-    const stockSearch = document.getElementById("stockSearch");
-    const tickerBar = document.getElementById("tickerBar");
-    const trendingCoinsDiv = document.getElementById("trendingCoins");
-    const trendingStocksDiv = document.getElementById("trendingStocks");
+// Select elements
+const coinSelect = document.getElementById("coinSelect");
+const currencySelect = document.getElementById("currencySelect");
+const stockSelect = document.getElementById("stockSelect");
+const resultDiv = document.getElementById("result");
+const coinSearch = document.getElementById("coinSearch");
+const stockSearch = document.getElementById("stockSearch");
+const trendingCryptoDiv = document.getElementById("trendingCrypto");
+const trendingStockDiv = document.getElementById("trendingStock");
+const tickerDiv = document.getElementById("ticker");
 
-    function switchType() {
-      const type = document.getElementById("calcType").value;
-      document.getElementById("cryptoSection").style.display = type === "crypto" ? "block" : "none";
-      document.getElementById("stockSection").style.display = type === "stock" ? "block" : "none";
-    }
+let coinsData = [];
+const topStocks = ["AAPL","MSFT","TSLA","AMZN","GOOG"]; // demo trending stocks
 
-    // ==== Trending Coins & Stocks ====
-    async function loadTrendingCoins() {
-      const res = await fetch("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=5&page=1&sparkline=false");
-      const data = await res.json();
-      trendingCoinsDiv.innerHTML = data.map(c => `
-        <div class="item" onclick="selectTrendingCoin('${c.id}', '${c.name}', '${c.symbol}')">
-          <img src="${c.image}"> ${c.name} (${c.symbol.toUpperCase()})
-        </div>
-      `).join("");
-    }
+function switchType() {
+  const type = document.getElementById("calcType").value;
+  document.getElementById("cryptoSection").style.display = type === "crypto" ? "block" : "none";
+  document.getElementById("stockSection").style.display = type === "stock" ? "block" : "none";
+}
 
-    function selectTrendingCoin(id, name, symbol) {
-      coinSelect.innerHTML = `<option value="${id}" selected>${name} (${symbol.toUpperCase()})</option>`;
-      coinSelect.dispatchEvent(new Event("change"));
-    }
+// ==== Load Currencies ====
+async function loadCurrencies() {
+  const res = await fetch("https://api.coingecko.com/api/v3/simple/supported_vs_currencies");
+  const data = await res.json();
+  currencySelect.innerHTML = data.map(c => `<option value="${c}">${c.toUpperCase()}</option>`).join("");
+  currencySelect.value = "usd";
+}
 
-    async function loadTrendingStocks() {
-      const res = await fetch(`https://finnhub.io/api/v1/stock/symbol?exchange=US&token=${FINNHUB_API_KEY}`);
-      const data = await res.json();
-      // Pick first 5 stocks for trending (you can enhance with real trending API)
-      const top5 = data.slice(0,5);
-      trendingStocksDiv.innerHTML = top5.map(s => `
-        <div class="item" onclick="selectTrendingStock('${s.symbol}', '${s.description || s.symbol}')">
-          ${s.description || s.symbol} (${s.symbol})
-        </div>
-      `).join("");
-    }
+// ==== Crypto Search ====
+async function searchCrypto(query) {
+  if(!query || query.length<2){ coinSelect.innerHTML="<option>Type to search...</option>"; return; }
+  const res = await fetch(`https://api.coingecko.com/api/v3/search?query=${query}`);
+  const data = await res.json();
+  if(data.coins && data.coins.length>0){
+    coinSelect.innerHTML = data.coins.map(c=>`<option value="${c.id}">${c.name} (${c.symbol.toUpperCase()})</option>`).join("");
+  }else{ coinSelect.innerHTML="<option>No results found</option>"; }
+}
+coinSearch.addEventListener("input",()=>searchCrypto(coinSearch.value.trim()));
 
-    function selectTrendingStock(symbol, description) {
-      stockSelect.innerHTML = `<option value="${symbol}" selected>${description} (${symbol})</option>`;
-      stockSelect.dispatchEvent(new Event("change"));
-    }
+// ==== Stock Search ====
+async function searchStocks(query){
+  if(!query || query.length<2){ stockSelect.innerHTML="<option>Type to search...</option>"; return; }
+  const res = await fetch(`https://finnhub.io/api/v1/search?q=${query}&token=${FINNHUB_API_KEY}`);
+  const data = await res.json();
+  if(data.result && data.result.length>0){
+    stockSelect.innerHTML = data.result.map(s=>`<option value="${s.symbol}">${s.description} (${s.symbol})</option>`).join("");
+  }else{ stockSelect.innerHTML="<option>No results found</option>"; }
+}
+stockSearch.addEventListener("input",()=>searchStocks(stockSearch.value.trim()));
 
-    // ==== Crypto Search & Currencies ====
-    async function searchCrypto(query) {
-      if (!query || query.length < 2) {
-        coinSelect.innerHTML = "<option>Type to search...</option>";
-        return;
-      }
-      const res = await fetch(`https://api.coingecko.com/api/v3/search?query=${query}`);
-      const data = await res.json();
-      if (data.coins && data.coins.length > 0) {
-        coinSelect.innerHTML = data.coins.map(c => `<option value="${c.id}">${c.name} (${c.symbol.toUpperCase()})</option>`).join("");
-      } else {
-        coinSelect.innerHTML = "<option>No results found</option>";
-      }
-    }
-    coinSearch.addEventListener("input", () => searchCrypto(coinSearch.value.trim()));
+// ==== Trending Crypto & Stock ====
+async function loadTrendingCrypto(){
+  const res = await fetch("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=5&page=1&sparkline=false");
+  const data = await res.json();
+  trendingCryptoDiv.innerHTML = data.map(c=>`<div class="coin" onclick="selectCoin('${c.id}')"><img src="${c.image}">${c.name} (${c.symbol.toUpperCase()})</div>`).join("");
+}
+function selectCoin(id){ coinSelect.value=id; }
 
-    async function loadCurrencies() {
-      const res = await fetch("https://api.coingecko.com/api/v3/simple/supported_vs_currencies");
-      const data = await res.json();
-      currencySelect.innerHTML = data.map(c => `<option value="${c}">${c.toUpperCase()}</option>`).join("");
-      currencySelect.value = "usd";
-    }
+// Stocks trending (demo)
+function loadTrendingStock(){
+  trendingStockDiv.innerHTML = topStocks.map(s=>`<div class="stock" onclick="selectStock('${s}')">${s}</div>`).join("");
+}
+function selectStock(sym){ stockSelect.value=sym; }
 
-    // ==== Stock Search ====
-    async function searchStocks(query) {
-      if (!query || query.length < 2) {
-        stockSelect.innerHTML = "<option>Type to search...</option>";
-        return;
-      }
-      const res = await fetch(`https://finnhub.io/api/v1/search?q=${query}&token=${FINNHUB_API_KEY}`);
-      const data = await res.json();
-      if (data.result && data.result.length > 0) {
-        stockSelect.innerHTML = data.result.map(s => `<option value="${s.symbol}">${s.description} (${s.symbol})</option>`).join("");
-      } else {
-        stockSelect.innerHTML = "<option>No results found</option>";
-      }
-    }
-    stockSearch.addEventListener("input", () => searchStocks(stockSearch.value.trim()));
+// ==== Live Ticker ====
+async function updateTicker(){
+  let tickerHTML="";
+  // Crypto top 5
+  const cryptoRes = await fetch("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=5&page=1&sparkline=false");
+  const cryptos = await cryptoRes.json();
+  cryptos.forEach(c=>{
+    tickerHTML+=`${c.name}: $${c.current_price.toFixed(2)}  |  `;
+  });
+  // Stock top 5
+  const stockPromises = topStocks.map(s=>fetch(`https://finnhub.io/api/v1/quote?symbol=${s}&token=${FINNHUB_API_KEY}`).then(r=>r.json()));
+  const stockData = await Promise.all(stockPromises);
+  stockData.forEach((s,i)=>{
+    if(s.c) tickerHTML+=`${topStocks[i]}: $${s.c.toFixed(2)}  |  `;
+  });
+  tickerDiv.innerHTML=`<span>${tickerHTML}</span>`;
+}
+setInterval(updateTicker, 10000); // every 10 sec
 
-    // ==== PnL Calculation ====
-    async function calculatePnL() {
-      const type = document.getElementById("calcType").value;
-      const buyPrice = parseFloat(document
+// ==== Calculation ====
+async function calculatePnL(){
+  const type=document.getElementById("calcType").value;
+  const buyPrice=parseFloat(document.getElementById("buyPrice").value);
+  const qty=parseFloat(document.getElementById("quantity").value);
+  if(!buyPrice||!qty) return;
+  let current,currency;
+
+  if(type==="crypto"){
+    const coin=coinSelect.value;
+    currency=currencySelect.value;
+    if(!coin){ alert("Select coin"); return; }
+    const res=await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coin}&vs_currencies=${currency}`);
+    const data=await res.json();
+    current=data[coin][currency];
+  }else{
+    const symbol=stockSelect.value;
+    if(!symbol){ alert("Select stock"); return; }
+    const res=await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API_KEY}`);
+    const data=await res.json();
+    if(!data.c){ alert("Invalid stock symbol"); return; }
+    current=data.c;
+    currency="USD";
+  }
+
+  const totalBuy=buyPrice*qty;
+  const totalCurrent=current*qty;
+  const pnl=totalCurrent-totalBuy;
+  resultDiv.innerHTML=`Current Price: ${current} ${currency.toUpperCase()}<br>Total Value: ${totalCurrent.toFixed(2)} ${currency.toUpperCase()}<br>P&L: <b style="color:${pnl>=0?'lime':'red'}">${pnl.toFixed(2)} ${currency.toUpperCase()}</b>`;
+}
+
+// ==== INIT ====
+loadCurrencies();
+loadTrendingCrypto();
+loadTrendingStock();
+updateTicker();
+setInterval(updateTicker,10000);
+
+</script>
+</body>
+</html>
