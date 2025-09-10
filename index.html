@@ -4,31 +4,139 @@
   <meta charset="UTF-8">
   <title>Crypto & Stock Calculator</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #0d1117; color: #eee; margin: 0; padding: 0; }
-    header { background: #161b22; padding: 15px; text-align: center; font-size: 20px; }
-    .container { display: flex; }
-    .sidebar { width: 250px; background: #161b22; padding: 15px; border-right: 1px solid #333; }
-    .content { flex: 1; padding: 20px; }
-    select, input { padding: 6px; margin: 5px; border-radius: 5px; border: 1px solid #444; background: #222; color: #eee; }
-    button { padding: 6px 10px; border: none; border-radius: 5px; background: #2ea043; color: #fff; cursor: pointer; }
-    h3 { border-bottom: 1px solid #333; padding-bottom: 5px; }
-    .coin { display: flex; align-items: center; margin: 5px 0; }
-    .coin img { width: 20px; height: 20px; margin-right: 8px; }
-    #coinSearch, #stockSearch { width: 90%; margin: 5px 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      color: #f1f1f1;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      padding: 20px;
+      text-align: center;
+      font-size: 24px;
+      font-weight: bold;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    header img {
+      vertical-align: middle;
+      margin-right: 10px;
+    }
+
+    .container {
+      display: flex;
+      flex: 1;
+    }
+
+    .sidebar {
+      width: 260px;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(12px);
+      padding: 20px;
+      border-right: 1px solid rgba(255,255,255,0.1);
+      box-shadow: inset -1px 0 10px rgba(0,0,0,0.2);
+    }
+
+    .content {
+      flex: 1;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: flex-start;
+    }
+
+    h3 {
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+      padding-bottom: 6px;
+      margin-bottom: 15px;
+      font-size: 18px;
+      color: #00e0ff;
+    }
+
+    select, input {
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 10px;
+      border: none;
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      width: 250px;
+      transition: all 0.3s ease;
+    }
+    select:focus, input:focus {
+      outline: none;
+      background: rgba(255,255,255,0.15);
+      box-shadow: 0 0 10px #00e0ff;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(45deg, #00e0ff, #0077ff);
+      color: #fff;
+      cursor: pointer;
+      font-weight: bold;
+      transition: 0.3s;
+    }
+    button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 15px #00e0ff;
+    }
+
+    .coin {
+      display: flex;
+      align-items: center;
+      margin: 8px 0;
+      padding: 6px;
+      border-radius: 8px;
+      transition: 0.2s;
+    }
+    .coin:hover {
+      background: rgba(255,255,255,0.1);
+      transform: translateX(5px);
+    }
+    .coin img {
+      width: 22px;
+      height: 22px;
+      margin-right: 10px;
+    }
+
+    #result {
+      margin-top: 20px;
+      padding: 20px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 12px;
+      font-size: 16px;
+      line-height: 1.6;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+
+    #coinSearch, #stockSearch {
+      width: 250px;
+    }
   </style>
 </head>
 <body>
   <header>
-    <img src="assets/logo.png" alt="Logo" width="50" style="vertical-align: middle; margin-right:10px;">
+    <img src="assets/logo.png" alt="Logo" width="50">
     Crypto & Stock Calculator
   </header>
   <div class="container">
     <div class="sidebar">
-      <h3>Trending Coins</h3>
+      <h3>🔥 Trending Coins</h3>
       <div id="trending"></div>
     </div>
     <div class="content">
-      <h3>Calculator</h3>
+      <h3>📊 Calculator</h3>
       <label>Type:</label>
       <select id="calcType" onchange="switchType()">
         <option value="crypto">Crypto</option>
@@ -61,7 +169,7 @@
   </div>
 
   <script>
-    const FINNHUB_API_KEY = "d30ti29r01qnu2qvkc80d30ti29r01qnu2qvkc8g"; // <-- apni Finnhub key daalo
+    const FINNHUB_API_KEY = "YOUR_API_KEY"; // <-- apni Finnhub key daalo
 
     const coinSelect = document.getElementById("coinSelect");
     const currencySelect = document.getElementById("currencySelect");
@@ -82,10 +190,8 @@
         coinSelect.innerHTML = "<option>Type to search...</option>";
         return;
       }
-
       const res = await fetch(`https://api.coingecko.com/api/v3/search?query=${query}`);
       const data = await res.json();
-
       if (data.coins && data.coins.length > 0) {
         coinSelect.innerHTML = data.coins
           .map(c => `<option value="${c.id}">${c.name} (${c.symbol.toUpperCase()})</option>`)
@@ -94,7 +200,6 @@
         coinSelect.innerHTML = "<option>No results found</option>";
       }
     }
-
     coinSearch.addEventListener("input", () => {
       const searchText = coinSearch.value.trim();
       searchCrypto(searchText);
@@ -121,10 +226,8 @@
         stockSelect.innerHTML = "<option>Type to search...</option>";
         return;
       }
-
       const res = await fetch(`https://finnhub.io/api/v1/search?q=${query}&token=${FINNHUB_API_KEY}`);
       const data = await res.json();
-
       if (data.result && data.result.length > 0) {
         stockSelect.innerHTML = data.result
           .map(s => `<option value="${s.symbol}">${s.description} (${s.symbol})</option>`)
@@ -133,7 +236,6 @@
         stockSelect.innerHTML = "<option>No results found</option>";
       }
     }
-
     stockSearch.addEventListener("input", () => {
       const searchText = stockSearch.value.trim();
       searchStocks(searchText);
@@ -148,37 +250,4 @@
 
       let current, currency;
 
-      if (type === "crypto") {
-        const coin = coinSelect.value;
-        currency = currencySelect.value;
-        if (!coin) { alert("Select coin"); return; }
-        const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coin}&vs_currencies=${currency}`);
-        const data = await res.json();
-        current = data[coin][currency];
-      } else if (type === "stock") {
-        const symbol = stockSelect.value;
-        if (!symbol) { alert("Select stock"); return; }
-        const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API_KEY}`);
-        const data = await res.json();
-        if (!data.c) { alert("Invalid stock symbol"); return; }
-        current = data.c;
-        currency = "USD"; // Finnhub mostly returns in USD
-      }
-
-      const totalBuy = buyPrice * qty;
-      const totalCurrent = current * qty;
-      const pnl = totalCurrent - totalBuy;
-      resultDiv.innerHTML = `
-        Current Price: ${current} ${currency.toUpperCase()}<br>
-        Total Value: ${totalCurrent.toFixed(2)} ${currency.toUpperCase()}<br>
-        P&L: <b style="color:${pnl>=0?'lime':'red'}">${pnl.toFixed(2)} ${currency.toUpperCase()}</b>
-      `;
-    }
-
-    // ==== INIT ====
-    setInterval(loadTrending, 60000);
-    loadCurrencies();
-    loadTrending();
-  </script>
-</body>
-</html>
+      if
