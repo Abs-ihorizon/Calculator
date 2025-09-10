@@ -15,7 +15,7 @@
       flex-direction: column;
     }
     header {
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(255,255,255,0.05);
       backdrop-filter: blur(10px);
       padding: 20px;
       text-align: center;
@@ -114,6 +114,7 @@
       transform: translateX(5px);
     }
     .coin img { width: 22px; height: 22px; margin-right: 10px; }
+
     #result {
       margin-top: 20px;
       padding: 20px;
@@ -126,51 +127,49 @@
   </style>
 </head>
 <body>
-  <header>
-    <img src="assets/logo.png" alt="Logo" width="50">Crypto & Stock Calculator
-  </header>
+<header>
+  <img src="assets/logo.png" alt="Logo" width="50">Crypto & Stock Calculator
+</header>
 
-  <div id="tickerBar"></div>
+<div id="tickerBar"><span>Loading...</span></div>
 
-  <div class="container">
-    <div class="sidebar">
-      <h3>🔥 Trending Coins</h3>
-      <div id="trendingCoins"></div>
-      <h3>📈 Trending Stocks</h3>
-      <div id="trendingStocks"></div>
-    </div>
-    <div class="content">
-      <h3>📊 Calculator</h3>
-      <label>Type:</label>
-      <select id="calcType" onchange="switchType()">
-        <option value="crypto">Crypto</option>
-        <option value="stock">Stock</option>
-      </select>
-
-      <!-- Crypto Section -->
-      <div id="cryptoSection">
-        <label>Search Coin:</label><br>
-        <input type="text" id="coinSearch" placeholder="Type at least 2 letters..."><br>
-        <select id="coinSelect"></select><br>
-        <label>Currency:</label>
-        <select id="currencySelect"></select><br>
-      </div>
-
-      <!-- Stock Section -->
-      <div id="stockSection" style="display:none;">
-        <label>Search Stock:</label><br>
-        <input type="text" id="stockSearch" placeholder="Type at least 2 letters..."><br>
-        <select id="stockSelect"></select><br>
-      </div>
-
-      <label>Buy Price:</label>
-      <input type="number" id="buyPrice" placeholder="e.g. 50000">
-      <label>Quantity:</label>
-      <input type="number" id="quantity" placeholder="e.g. 0.1">
-      <button onclick="calculatePnL()">Calculate</button>
-      <div id="result"></div>
-    </div>
+<div class="container">
+  <div class="sidebar">
+    <h3>🔥 Trending Coins</h3>
+    <div id="trendingCoins"></div>
+    <h3>📈 Trending Stocks</h3>
+    <div id="trendingStocks"></div>
   </div>
+  <div class="content">
+    <h3>📊 Calculator</h3>
+    <label>Type:</label>
+    <select id="calcType" onchange="switchType()">
+      <option value="crypto">Crypto</option>
+      <option value="stock">Stock</option>
+    </select>
+
+    <div id="cryptoSection">
+      <label>Search Coin:</label><br>
+      <input type="text" id="coinSearch" placeholder="Type at least 2 letters..."><br>
+      <select id="coinSelect"></select><br>
+      <label>Currency:</label>
+      <select id="currencySelect"></select><br>
+    </div>
+
+    <div id="stockSection" style="display:none;">
+      <label>Search Stock:</label><br>
+      <input type="text" id="stockSearch" placeholder="Type at least 2 letters..."><br>
+      <select id="stockSelect"></select><br>
+    </div>
+
+    <label>Buy Price:</label>
+    <input type="number" id="buyPrice" placeholder="e.g. 50000">
+    <label>Quantity:</label>
+    <input type="number" id="quantity" placeholder="e.g. 0.1">
+    <button onclick="calculatePnL()">Calculate</button>
+    <div id="result"></div>
+  </div>
+</div>
 
 <script>
 const FINNHUB_API_KEY = "d30ti29r01qnu2qvkc80d30ti29r01qnu2qvkc8g";
@@ -181,41 +180,49 @@ const stockSelect = document.getElementById("stockSelect");
 const resultDiv = document.getElementById("result");
 const coinSearch = document.getElementById("coinSearch");
 const stockSearch = document.getElementById("stockSearch");
-
 const trendingCoinsDiv = document.getElementById("trendingCoins");
 const trendingStocksDiv = document.getElementById("trendingStocks");
 const tickerBar = document.getElementById("tickerBar");
 
-function switchType() {
+// ---- Switch calculator type ----
+function switchType(){
   const type = document.getElementById("calcType").value;
-  document.getElementById("cryptoSection").style.display = type === "crypto" ? "block" : "none";
-  document.getElementById("stockSection").style.display = type === "stock" ? "block" : "none";
+  document.getElementById("cryptoSection").style.display = type==="crypto"?"block":"none";
+  document.getElementById("stockSection").style.display = type==="stock"?"block":"none";
 }
 
-// ===== Crypto =====
-async function searchCrypto(query) {
-  if (!query || query.length<2) {
-    coinSelect.innerHTML = "<option>Type to search...</option>";
-    return;
-  }
-  const res = await fetch(`https://api.coingecko.com/api/v3/search?query=${query}`);
-  const data = await res.json();
-  if (data.coins && data.coins.length>0){
-    coinSelect.innerHTML = data.coins.map(c => `<option value="${c.id}">${c.name} (${c.symbol.toUpperCase()})</option>`).join("");
-  } else {
-    coinSelect.innerHTML = "<option>No results found</option>";
-  }
-}
-coinSearch.addEventListener("input", ()=>searchCrypto(coinSearch.value.trim()));
-
-async function loadCurrencies() {
+// ---- Load currencies ----
+async function loadCurrencies(){
   const res = await fetch("https://api.coingecko.com/api/v3/simple/supported_vs_currencies");
   const data = await res.json();
-  currencySelect.innerHTML = data.map(c => `<option value="${c}">${c.toUpperCase()}</option>`).join("");
-  currencySelect.value = "usd";
+  currencySelect.innerHTML = data.map(c=>`<option value="${c}">${c.toUpperCase()}</option>`).join("");
+  currencySelect.value="usd";
 }
 
-async function loadTrendingCoins() {
+// ---- Crypto search ----
+async function searchCrypto(query){
+  if(!query || query.length<2){ coinSelect.innerHTML="<option>Type to search...</option>"; return; }
+  const res = await fetch(`https://api.coingecko.com/api/v3/search?query=${query}`);
+  const data = await res.json();
+  if(data.coins && data.coins.length>0){
+    coinSelect.innerHTML = data.coins.map(c=>`<option value="${c.id}">${c.name} (${c.symbol.toUpperCase()})</option>`).join("");
+  } else coinSelect.innerHTML="<option>No results</option>";
+}
+coinSearch.addEventListener("input",()=>searchCrypto(coinSearch.value.trim()));
+
+// ---- Stock search ----
+async function searchStocks(query){
+  if(!query || query.length<2){ stockSelect.innerHTML="<option>Type to search...</option>"; return; }
+  const res = await fetch(`https://finnhub.io/api/v1/search?q=${query}&token=${FINNHUB_API_KEY}`);
+  const data = await res.json();
+  if(data.result && data.result.length>0){
+    stockSelect.innerHTML = data.result.map(s=>`<option value="${s.symbol}">${s.description||s.symbol} (${s.symbol})</option>`).join("");
+  } else stockSelect.innerHTML="<option>No results</option>";
+}
+stockSearch.addEventListener("input",()=>searchStocks(stockSearch.value.trim()));
+
+// ---- Trending Coins ----
+async function loadTrendingCoins(){
   const res = await fetch("https://api.coingecko.com/api/v3/search/trending");
   const data = await res.json();
   trendingCoinsDiv.innerHTML="";
@@ -227,4 +234,7 @@ async function loadTrendingCoins() {
     trendingCoinsDiv.appendChild(div);
   });
 }
-
+function selectCoin(id){
+  let option = coinSelect.querySelector(`option[value="${id}"]`);
+  if(!option){ option=document.createElement("option"); option.value=id; option.text=id; coinSelect.appendChild(option); }
+  coinSelect
