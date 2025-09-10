@@ -38,8 +38,7 @@
       <!-- Crypto Section -->
       <div id="cryptoSection">
         <label>Search Coin:</label><br>
-        <input type="text" id="coinSearch" placeholder="Search coin...">
-        <br>
+        <input type="text" id="coinSearch" placeholder="Type at least 2 letters..."><br>
         <select id="coinSelect"></select><br>
         <label>Currency:</label>
         <select id="currencySelect"></select><br>
@@ -48,8 +47,7 @@
       <!-- Stock Section -->
       <div id="stockSection" style="display:none;">
         <label>Search Stock:</label><br>
-        <input type="text" id="stockSearch" placeholder="Type at least 2 letters...">
-        <br>
+        <input type="text" id="stockSearch" placeholder="Type at least 2 letters..."><br>
         <select id="stockSelect"></select><br>
       </div>
 
@@ -63,7 +61,7 @@
   </div>
 
   <script>
-    const FINNHUB_API_KEY = "d30ti29r01qnu2qvkc80d30ti29r01qnu2qvkc8g"; // <-- apni API key yahan daalo
+    const FINNHUB_API_KEY = "YOUR_API_KEY_HERE"; // <-- apni Finnhub key daalo
 
     const coinSelect = document.getElementById("coinSelect");
     const currencySelect = document.getElementById("currencySelect");
@@ -72,8 +70,6 @@
     const coinSearch = document.getElementById("coinSearch");
     const stockSearch = document.getElementById("stockSearch");
 
-    let coinsData = [];
-
     function switchType() {
       const type = document.getElementById("calcType").value;
       document.getElementById("cryptoSection").style.display = type === "crypto" ? "block" : "none";
@@ -81,22 +77,27 @@
     }
 
     // ==== CRYPTO SECTION ====
-    async function loadCoins() {
-      const res = await fetch("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false");
-      coinsData = await res.json();
-      renderCoinOptions(coinsData);
-    }
+    async function searchCrypto(query) {
+      if (!query || query.length < 2) {
+        coinSelect.innerHTML = "<option>Type to search...</option>";
+        return;
+      }
 
-    function renderCoinOptions(data) {
-      coinSelect.innerHTML = data.map(c => `<option value="${c.id}">${c.name} (${c.symbol.toUpperCase()})</option>`).join("");
+      const res = await fetch(`https://api.coingecko.com/api/v3/search?query=${query}`);
+      const data = await res.json();
+
+      if (data.coins && data.coins.length > 0) {
+        coinSelect.innerHTML = data.coins
+          .map(c => `<option value="${c.id}">${c.name} (${c.symbol.toUpperCase()})</option>`)
+          .join("");
+      } else {
+        coinSelect.innerHTML = "<option>No results found</option>";
+      }
     }
 
     coinSearch.addEventListener("input", () => {
-      const searchText = coinSearch.value.toLowerCase();
-      const filtered = coinsData.filter(c => 
-        c.name.toLowerCase().includes(searchText) || c.symbol.toLowerCase().includes(searchText)
-      );
-      renderCoinOptions(filtered);
+      const searchText = coinSearch.value.trim();
+      searchCrypto(searchText);
     });
 
     async function loadCurrencies() {
@@ -150,6 +151,7 @@
       if (type === "crypto") {
         const coin = coinSelect.value;
         currency = currencySelect.value;
+        if (!coin) { alert("Select coin"); return; }
         const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coin}&vs_currencies=${currency}`);
         const data = await res.json();
         current = data[coin][currency];
@@ -175,7 +177,6 @@
 
     // ==== INIT ====
     setInterval(loadTrending, 60000);
-    loadCoins();
     loadCurrencies();
     loadTrending();
   </script>
